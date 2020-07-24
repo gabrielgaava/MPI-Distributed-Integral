@@ -1,36 +1,15 @@
 compile:
-	mpigcc main.c -o main
+	mpicc main.c -o main -lm
 
-slave1:
-	./master&
-	sleep 2
-	./slave
-	
 slave2:
-	./master&
-	sleep 2
-	./slave& # Slave1
-	./slave  # Slave2
+	mpirun -np 2 -quiet ./main
 	
-slave4:
-	./master&
-	sleep 2
-	./slave& # Slave1
-	./slave& # Slave2
-	./slave& # Slave3
-	./slave # Slave4
+slave3:
+	mpirun -np 3 -quiet ./main
+	
+slave5:
+	mpirun -np 5 -quiet ./main
 	
 slave10:
-	./master&
-	sleep 2
-	./slave& # Slave1
-	./slave& # Slave2
-	./slave& # Slave3
-	./slave& # Slave4
-	./slave& # Slave5
-	./slave& # Slave6
-	./slave& # Slave7
-	./slave& # Slave8
-	./slave& # Slave9
-	./slave  # Slave10
+	mpirun -np 10 -quiet ./main
 	

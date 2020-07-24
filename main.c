@@ -47,41 +47,40 @@ int main(int argc, char *argv[]) {
                 for(process = 1; process < sizeOfCluster; process++) {
                     MPI_Send(&discretization, 1, MPI_DOUBLE, process, 1, MPI_COMM_WORLD);
                     MPI_Send(&gap, 1, MPI_DOUBLE, process, 1, MPI_COMM_WORLD);
-                    printf("[MASTER] Descritizacao = %f\n", discretization);
-                    printf("[MASTER] GAP = %f\n", gap);
+                    //printf("[MASTER] Descritizacao = %f\n", discretization);
+                    //printf("[MASTER] GAP = %f\n", gap);
 
                     gap = gap + discretization;
                 }
-            }
+            } else MPI_Finalize();
 
             for(process = 1; process < sizeOfCluster; process++) {
                 MPI_Recv(&calculated, 1, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 total = calculated + total;
-                printf("[MASTER] Atualizando valor de integral: %f\n", total);
+                //printf("[MASTER] Atualizando valor de integral: %f\n", total);
             }
             
         } else {
 
-            if(gap + discretization <= 100){
-                MPI_Recv(&discretization, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                MPI_Recv(&gap, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                printf("[%d] Discretizacao: < %f\n",processRank, discretization);
-                printf("[%d] GAP: < %f\n",processRank, gap);
-                
-                calculated = integral(gap, discretization);
-                printf("[%d] Integral: %f\n", processRank, calculated);
+            MPI_Recv(&discretization, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(&gap, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            //printf("[%d] Discretizacao: < %f\n",processRank, discretization);
+            //printf("[%d] GAP: < %f\n",processRank, gap);
+            
+            calculated = integral(gap, discretization);
+            //printf("[%d] Integral: %f\n", processRank, calculated);
 
-                
-                MPI_Send(&calculated, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD); 
-            }
-               
+            
+            MPI_Send(&calculated, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD); 
+            
         }
-        MPI_Barrier(MPI_COMM_WORLD);
+
+        // SIncroniza processos
+        MPI_Barrier(MPI_COMM_WORLD);    
+        //puts("=== loop  ===");
     }
-
-    printf("\nVALOR FINAL DA INTEGRAL: %f", total);
-
-    MPI_Finalize();
-    puts("MPI Finalizado gostosinho!\n");
+    
+    printf("\nVALOR FINAL DA INTEGRAL: %f \n", total);
     return 0;
+    
 }
