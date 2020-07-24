@@ -61,7 +61,8 @@ int main(int argc, char *argv[]) {
             }
             
         } else {
-
+            // Antes de esperar receber alguma coisa, verifica se ainda tem trabalho a ser feito
+            // if (gap + discretization <= 100) {
             MPI_Recv(&discretization, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             MPI_Recv(&gap, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             //printf("[%d] Discretizacao: < %f\n",processRank, discretization);
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
 
             
             MPI_Send(&calculated, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD); 
-            
+            // }
         }
 
         // SIncroniza processos
