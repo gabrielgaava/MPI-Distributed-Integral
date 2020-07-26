@@ -5,12 +5,10 @@
 
 #define MASTER 0
 
-// Variavel que eu n sei oq faz
-int processRank, sizeOfCluster, process, done = 0;
-
 // Variaveis da Integral
 double discretization = 0.0001;
 double gap = 0.0;
+double lastTotal = 0.0;
 double total = 0.0;
 double calculated = 0.0;
 
@@ -32,80 +30,88 @@ double integral(double gap, double discretization){
 }
 
 // Rotina executada pelo Mestre
-void Master(){
+void Master(int sizeOfCluster){
+    
+    for(int process = 1; process < sizeOfCluster; process++) {
 
-    if(gap + discretization <= 100){
-                
-        for(process = 1; process < sizeOfCluster; process++) {
-            MPI_Send(&discretization, 1, MPI_DOUBLE, process, 1, MPI_COMM_WORLD);
-            MPI_Send(&gap, 1, MPI_DOUBLE, process, 1, MPI_COMM_WORLD);
-            //printf("[MASTER] Descritizacao = %f\n", discretization);
-            //printf("[MASTER] GAP = %f\n", gap);
+        MPI_Send(&discretization, 1, MPI_DOUBLE, process, 1, MPI_COMM_WORLD);
+        MPI_Send(&gap, 1, MPI_DOUBLE, process, 1, MPI_COMM_WORLD);
+        //printf("[MASTER] Descritizacao = %f\n", discretization);
+        //printf("[MASTER] GAP = %f\n", gap);
 
-            gap = gap + discretization;
-        }
-        
-        for(process = 1; process < sizeOfCluster; process++) {
-            MPI_Recv(&calculated, 1, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            total = calculated + total;
-            //printf("[MASTER] Atualizando valor de integral: %f\n", total);
-        }
+        gap = gap + discretization;
+    }
+    
+    for(int process = 1; process < sizeOfCluster; process++) {
 
-    } else MPI_Finalize(); 
+        MPI_Recv(&calculated, 1, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        lastTotal = total;
+        total = calculated + total;
+        //printf("[MASTER] Atualizando valor de integral: %f\n", total);
+    }
 
 }
 
 // Rotina executada pelo EScravo
-void Slave(){
+void Slave(int slaveRank){
 
-    if(gap + discretization <= 100){
-
-        MPI_Recv(&discretization, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&gap, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        //printf("[%d] Discretizacao: < %f\n",processRank, discretization);
-        //printf("[%d] GAP: < %f\n",processRank, gap);
-        
-        calculated = integral(gap, discretization);
-        //printf("[%d] Integral: %f\n", processRank, calculated);
-
-        
-        MPI_Send(&calculated, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD); 
-
-    }
+    MPI_Recv(&discretization, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(&gap, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //printf("[%d] Discretizacao: < %f\n",slaveRank, discretization);
+    //printf("[%d] GAP: < %f\n",slaveRank, gap);
+    
+    calculated = integral(gap, discretization);
+    //printf("[%d] Integral: %f\n", slaveRank, calculated);
+    
+    MPI_Send(&calculated, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD); 
 
 }
 
 // Função principal
 int main(int argc, char *argv[]) {
 
-    //  Calculo de tempo
+    // Variavel que eu n sei oq faz
+    int processRank, sizeOfCluster, process, done = 0;
+
+    // Variavel para medir tempo
     float t1, t2;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &sizeOfCluster); // Quantidade de processos rodando
     MPI_Comm_rank(MPI_COMM_WORLD, &processRank); // Indice do processo rodando
 
-    printf("Iniciando processo %d de %d\n", processRank, sizeOfCluster); 
+    if(processRank == MASTER){
+        printf("Calculando integral com discretizacao = %f\n", discretization); 
+        printf("AGUARDE...\n"); 
+    }
 
     t1 = clock(); 
     while(gap + discretization <= 100){
 
-        if(processRank == MASTER) Master();
+        if(processRank == MASTER) Master(sizeOfCluster);
         
-        else Slave();
+        else Slave(processRank);
 
-        // SIncroniza processos
+        // Sincroniza processos
         MPI_Barrier(MPI_COMM_WORLD);    
 
     }
     t2 = clock();
-    
     // Printar o resultado final
     float time = (t2 - t1) / CLOCKS_PER_SEC;
-    printf("O tempo total levado foi de :");
-    printf("%f", time);
 
-    printf("\nVALOR FINAL DA INTEGRAL: %f \n", total);
+    if(processRank == MASTER){
+
+        // Log de Resultados
+        printf("\n============== RESULTADO ==============");
+        printf("\n> NUMERO DE ESCRAVOS      : %d", sizeOfCluster-1);
+        printf("\n> VALOR FINAL DA INTEGRAL : %f", lastTotal);
+        printf("\n> TEMPO TOTAL DE EXECUCAO : ");
+        printf("%fs", time);
+        printf("\n=======================================\n\n ");
+
+    }
+    
     return 0;
     
 }
